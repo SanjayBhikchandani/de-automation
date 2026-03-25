@@ -4,6 +4,7 @@ from playwright.sync_api import sync_playwright
 from string import Template # python command
 import traceback
 import re
+import numbers
 from datetime import datetime
 import os
 
@@ -19,6 +20,20 @@ def run_automation():
     if load_dotenv:
         load_dotenv()
 
+    def normalize_identifier(value):
+        if pd.isna(value):
+            return ''
+        if isinstance(value, str):
+            return value.strip()
+        if isinstance(value, numbers.Integral):
+            return str(int(value))
+        if isinstance(value, numbers.Real):
+            numeric_value = float(value)
+            if numeric_value.is_integer():
+                return str(int(numeric_value))
+            return str(value).strip()
+        return str(value).strip()
+
     dms_username = os.getenv("DMS_USERNAME", "").strip()
     dms_password = os.getenv("DMS_PASSWORD", "").strip()
     login_url = os.getenv("LOGIN_URL", "").strip()
@@ -31,7 +46,13 @@ def run_automation():
         context = browser.new_context()
         context.tracing.start(screenshots=True, snapshots=True, sources=True)
         page = context.new_page()
-        df = pd.read_excel("MASTERSHEET_FOR_DAILY_DMS_ENTERIES_NEW.xlsx")
+        df = pd.read_excel(
+            "March_2026.xlsx",
+            converters={
+                'A.code': normalize_identifier,
+                'PARTY CODE': normalize_identifier
+            }
+        )
         print(f"Excel loaded! Found {len(df)} rows.")
 
         if 'Status' not in df.columns:
@@ -39,6 +60,24 @@ def run_automation():
 
         if 'Processed Date' not in df.columns:
             df['Processed Date'] = ''
+
+        required_columns = ['A.code', 'CP/BP/REG', 'PARTY CODE']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise ValueError(f"Missing required column(s): {', '.join(missing_columns)}")
+
+        def is_empty(value):
+            return pd.isna(value) or str(value).strip() == ''
+
+        skipped_count = 0
+        for index, row in df.iterrows():
+            missing_fields = [col for col in required_columns if is_empty(row[col])]
+            if missing_fields:
+                df.loc[index, 'Status'] = f"Skipped: Missing required field(s): {', '.join(missing_fields)}"
+                skipped_count += 1
+
+        rows_to_process = df[~df['Status'].astype(str).str.startswith('Skipped:')]
+        print(f"Rows eligible for processing: {len(rows_to_process)} | Skipped rows: {skipped_count}")
 
         try:
             print("Starting Playwright...")
@@ -60,7 +99,7 @@ def run_automation():
 
             page.wait_for_load_state("networkidle")
 
-            grouped = df.groupby('Voucher No.')
+            grouped = rows_to_process.groupby('Voucher No.')
 
             for voucher_no, items in grouped:
                 print(f"Processing Voucher: {voucher_no} ({len(items)} items)")
@@ -71,8 +110,8 @@ def run_automation():
                 outlet_input = page.get_by_role("textbox", name="Select Outlet")
                 outlet_input.wait_for()
                 outlet_input.click()
-                page.get_by_role("searchbox", name="Search").nth(2).fill(str(first_row['PARTY CODE']))
-                page.get_by_role("option", name=str(first_row['PARTY CODE'])).click()
+                page.get_by_role("searchbox", name="Search").nth(2).fill(first_row['PARTY CODE'])
+                page.get_by_role("option", name=first_row['PARTY CODE']).click()
                 page.wait_for_timeout(2000)
 
                 for index, row in items.iterrows():
@@ -86,7 +125,7 @@ def run_automation():
 
                         search_input = page.get_by_role("searchbox", name="Search:")
                         search_input.wait_for()
-                        search_input.fill(str(row['A.code']))
+                        search_input.fill(row['A.code'])
                         page.wait_for_timeout(1000)
 
                         sku_id = page.locator("#skunitstable").locator("tbody").locator("tr").first.locator("td").first.inner_text()
@@ -106,6 +145,7 @@ def run_automation():
                         print(f"Row {index} status updated to Failed: {row_error}")
                         continue
 
+                page.pause()
                 page.get_by_role("link", name="Next").first.click()
                 page.get_by_role("link", name="Next").click()
 
@@ -127,16 +167,8 @@ def run_automation():
 
         finally:
             browser.close()
-
-            try:
-                df.to_excel("MASTERSHEET_FOR_DAILY_DMS_ENTERIES_NEW.xlsx", index=False)
-                print("Excel file saved with processing status updates")
-            except PermissionError:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                backup_filename = f"MASTERSHEET_FOR_DAILY_DMS_ENTERIES_NEW_BACKUP_{timestamp}.xlsx"
-                df.to_excel(backup_filename, index=False)
-                print(f"⚠️ Original file is locked/in use. Saved to: {backup_filename}")
-                print("Please close the Excel file and manually replace the original with this backup.")
+            df.to_excel("PROCESSED_RECORDS.xlsx", index=False)
+            print("Excel file saved with processing status updates")
 
 if __name__ == "__main__":
     run_automation()
