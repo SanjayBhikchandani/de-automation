@@ -5,13 +5,29 @@ from string import Template # python command
 import traceback
 import re
 from datetime import datetime
+import os
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
 
 options = ["CP", "BP", "Regional"]
 
 def run_automation():
-    print("Step 1: Starting Playwright...")
+
+    if load_dotenv:
+        load_dotenv()
+
+    dms_username = os.getenv("DMS_USERNAME", "").strip()
+    dms_password = os.getenv("DMS_PASSWORD", "").strip()
+    login_url = os.getenv("LOGIN_URL", "").strip()
+    sales_url = os.getenv("SALES_URL", "").strip()
+    if not dms_username or not dms_password:
+        raise ValueError("Missing DMS credentials. Set DMS_USERNAME and DMS_PASSWORD environment variables.")
+
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=False)
         context = browser.new_context()
         context.tracing.start(screenshots=True, snapshots=True, sources=True)
         page = context.new_page()
@@ -25,7 +41,8 @@ def run_automation():
             df['Processed Date'] = ''
 
         try:
-            page.goto("/users/login")
+            print("Starting Playwright...")
+            page.goto(login_url)
 
             # page.fill('input[name="identifier"]', "")
             #
@@ -37,8 +54,8 @@ def run_automation():
             #
             # page.click('input[type="submit"]')
 
-            page.get_by_role("textbox", name="Username").fill("")
-            page.get_by_role("textbox", name="Password").fill("")
+            page.get_by_role("textbox", name="Username").fill(dms_username)
+            page.get_by_role("textbox", name="Password").fill(dms_password)
             page.get_by_role("button", name="Login").click()
 
             page.wait_for_load_state("networkidle")
@@ -49,7 +66,7 @@ def run_automation():
                 print(f"Processing Voucher: {voucher_no} ({len(items)} items)")
                 first_row = items.iloc[0]
 
-                page.goto("/payments/sale")
+                page.goto(sales_url)
 
                 outlet_input = page.get_by_role("textbox", name="Select Outlet")
                 outlet_input.wait_for()
@@ -65,12 +82,12 @@ def run_automation():
                         if not (page.get_by_role("button", name=row['CP/BP/REG']).is_visible()):
                             page.get_by_role("button", name=re.compile(r"CP|BP|Regional", re.IGNORECASE)).click()
                             page.locator("a").filter(has_text=row['CP/BP/REG']).click()
-                            page.wait_for_timeout(500)
+                            page.wait_for_timeout(1000)
 
                         search_input = page.get_by_role("searchbox", name="Search:")
                         search_input.wait_for()
                         search_input.fill(str(row['A.code']))
-                        page.wait_for_timeout(500)
+                        page.wait_for_timeout(1000)
 
                         sku_id = page.locator("#skunitstable").locator("tbody").locator("tr").first.locator("td").first.inner_text()
                         print('sku_id', sku_id)
