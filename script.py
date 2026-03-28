@@ -1,7 +1,7 @@
 import pandas as pd
 from playwright.sync_api import sync_playwright
-# from string.templatelib import Template # py command
-from string import Template # python command
+from string.templatelib import Template # py command
+# from string import Template # python command
 import traceback
 import re
 import numbers
@@ -119,8 +119,7 @@ def run_automation():
                 page.get_by_role("searchbox", name="Search").nth(2).fill(first_row['PARTY CODE'])
                 page.get_by_role("option", name=first_row['PARTY CODE']).click()
                 # page.wait_for_timeout(2000)
-                page.locator('#skunitstable_processing').wait_for(state='hidden', timeout=10000)
-                # skunitstable_processing
+                page.locator('#skunitstable_processing').wait_for(state='hidden', timeout=20000)
 
                 for index, row in items.iterrows():
                     print("row-->", row)
@@ -138,19 +137,29 @@ def run_automation():
                         page.wait_for_timeout(500)
                         page.locator('#skunitstable_processing').wait_for(state='hidden', timeout=10000)
 
-                        sku_id = page.locator("#skunitstable").locator("tbody").locator("tr").first.locator("td").first.inner_text()
+                        sku_id = page.locator("#skunitstable").locator("tbody").locator("tr").first.locator("td").first.inner_text().strip()
+                        
                         print('sku_id', sku_id)
-                        clean_id = str(sku_id).strip()
-                        if not clean_id.isdigit():
+                        if not sku_id.isdigit():
                             raise ValueError(f"Invalid SKU ID found: '{sku_id}' for row {index}")
+                        
+                        cases_available = page.locator("#casesavai_" + sku_id).inner_text()
+                        print('cases_available', cases_available)
+                        if int(row['Quantity (Case)']) > int(cases_available):
+                            raise ValueError(f"Can't sell more than the inventory: '{sku_id}' for row {index}")
 
                         price_input = page.locator("#price_" + sku_id)
                         price_input.wait_for()
                         price_input.fill(str(row['PER UNIT SALE PRICE']))
                         cases_input = page.locator("#cases_" + sku_id)
-
                         cases_input.wait_for()
                         cases_input.fill(str(row['Quantity (Case)']))
+                        page.wait_for_timeout(500)
+                        min_price_alert = page.get_by_text("Minimum Per Unit Sale Price")
+
+                        if min_price_alert.is_visible():
+                            page.get_by_role("button", name="Ok").click()
+
                         df.loc[index, 'Status'] = 'Processed'
                         print(f"Row {index} status updated to Processed")
 
@@ -167,7 +176,13 @@ def run_automation():
                         df.loc[index, 'Processed Date'] = datetime.now().strftime("%Y-%m-%d")
                     continue
 
-                page.get_by_role("link", name="Next").click()
+                next_btn = page.get_by_role("link", name="Next")
+                next_btn.wait_for()
+                next_btn.click()
+
+                finish_btn = page.get_by_role("link", name="Finish")
+                finish_btn.wait_for()
+                finish_btn.click()
 
                 for index in items.index:
                     if df.loc[index, 'Status'] == 'Processed':
