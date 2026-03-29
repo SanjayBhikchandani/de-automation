@@ -204,8 +204,8 @@ def run_automation():
 
         except Exception as e:
             print(f"CRITICAL ERROR: {e}")
-            context.tracing.stop(path="run_trace.zip")
-            print("Trace saved to run_trace.zip. View it at trace.playwright.dev")
+            context.tracing.stop(path="error_trace.zip")
+            print("Trace saved to error_trace.zip. View it at trace.playwright.dev")
             traceback.print_exc()
 
         finally:
