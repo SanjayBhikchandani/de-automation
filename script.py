@@ -118,7 +118,7 @@ def run_automation():
                 outlet_input.click()
                 page.get_by_role("searchbox", name="Search").nth(2).fill(first_row['PARTY CODE'])
                 page.get_by_role("option", name=first_row['PARTY CODE']).click()
-                # page.wait_for_timeout(2000)
+                page.wait_for_timeout(1000)
                 page.locator('#skunitstable_processing').wait_for(state='hidden', timeout=20000)
 
                 for index, row in items.iterrows():
@@ -180,9 +180,17 @@ def run_automation():
                 next_btn.wait_for()
                 next_btn.click()
 
-                finish_btn = page.get_by_role("link", name="Finish")
-                finish_btn.wait_for()
-                finish_btn.click()
+                with context.expect_page() as finish_page_info:
+                    finish_btn = page.get_by_role("link", name="Finish")
+                    finish_btn.wait_for()
+                    finish_btn.click()
+                    page.wait_for_timeout(1000)
+
+                new_tab = finish_page_info.value
+                new_tab.wait_for_load_state('domcontentloaded')
+                print(f"New tab title: {new_tab.title()}")
+                new_tab.close()
+                page.bring_to_front()
 
                 for index in items.index:
                     if df.loc[index, 'Status'] == 'Processed':
@@ -203,7 +211,7 @@ def run_automation():
         finally:
             browser.close()
             df.to_excel("PROCESSED_RECORDS.xlsx", index=False)
-            print("Excel file saved with processing status updates")
+            print("Excel file saved with status updates")
 
 if __name__ == "__main__":
     run_automation()
