@@ -117,7 +117,16 @@ def run_automation():
                 outlet_input.wait_for()
                 outlet_input.click()
                 page.get_by_role("searchbox", name="Search").nth(2).fill(first_row['PARTY CODE'])
-                page.get_by_role("option", name=first_row['PARTY CODE']).click()
+                party_code_option = page.get_by_role("option", name=first_row['PARTY CODE'])
+
+                if party_code_option.is_visible():
+                    party_code_option.click()
+
+                else:
+                    df.loc[items.index, 'Status'] = f"Failed: PARTY CODE '{first_row['PARTY CODE']}' not found in dropdown"
+                    print(f"Voucher {voucher_no} failed: PARTY CODE '{first_row['PARTY CODE']}' not found")
+                    continue
+
                 page.wait_for_timeout(1000)
                 page.locator('#skunitstable_processing').wait_for(state='hidden', timeout=20000)
 
@@ -189,7 +198,6 @@ def run_automation():
 
                 new_tab = finish_page_info.value
                 new_tab.wait_for_load_state('domcontentloaded')
-                print(f"New tab title: {new_tab.title()}")
                 new_tab.close()
                 page.bring_to_front()
 
