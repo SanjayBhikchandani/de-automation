@@ -156,8 +156,9 @@ def run_automation():
                         cases_input.fill(str(row['Quantity (Case)']))
                         page.wait_for_timeout(500)
                         min_price_alert = page.get_by_text("Minimum Per Unit Sale Price")
+                        max_price_alert = page.get_by_text("Maximum Per Unit Sale Price")
 
-                        if min_price_alert.is_visible():
+                        if min_price_alert.is_visible() or max_price_alert.is_visible():
                             page.get_by_role("button", name="Ok").click()
 
                         df.loc[index, 'Status'] = 'Processed'
