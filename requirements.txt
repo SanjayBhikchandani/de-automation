@@ -1,4 +1,4 @@
 pandas
 playwright
 python-dotenv
-
+openpyxl
