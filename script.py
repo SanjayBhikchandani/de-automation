@@ -1,7 +1,7 @@
 import pandas as pd
 from playwright.sync_api import sync_playwright
-from string.templatelib import Template # py command
-# from string import Template # python command
+# from string.templatelib import Template # py command
+from string import Template # python command
 import traceback
 import re
 import numbers
