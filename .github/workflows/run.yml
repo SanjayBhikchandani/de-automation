@@ -38,7 +38,7 @@ jobs:
       
       - name: Upload processed results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: processed-records
           path: PROCESSED_RECORDS_*.xlsx
@@ -46,7 +46,7 @@ jobs:
       
       - name: Upload error logs
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: error-logs
           path: error_trace.zip
