@@ -48,7 +48,7 @@ def run_automation():
         context.tracing.start(screenshots=True, snapshots=True, sources=True)
         page = context.new_page()
         df = pd.read_excel(
-            "Automation_Sheet.xlsx",
+            "Automation_Test_Cloud.xlsx",
             sheet_name=0,
             converters={
                 'A.code': normalize_identifier,
@@ -191,16 +191,16 @@ def run_automation():
                 next_btn.wait_for()
                 next_btn.click()
 
-                with context.expect_page() as finish_page_info:
-                    finish_btn = page.get_by_role("link", name="Finish")
-                    finish_btn.wait_for()
-                    finish_btn.click()
-                    page.wait_for_timeout(1000)
+                # with context.expect_page() as finish_page_info:
+                #     finish_btn = page.get_by_role("link", name="Finish")
+                #     finish_btn.wait_for()
+                #     finish_btn.click()
+                #     page.wait_for_timeout(1000)
 
-                new_tab = finish_page_info.value
-                new_tab.wait_for_load_state('domcontentloaded')
-                new_tab.close()
-                page.bring_to_front()
+                # new_tab = finish_page_info.value
+                # new_tab.wait_for_load_state('domcontentloaded')
+                # new_tab.close()
+                # page.bring_to_front()
 
                 for index in items.index:
                     if df.loc[index, 'Status'] == 'Processed':
