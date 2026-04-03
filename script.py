@@ -49,6 +49,7 @@ def run_automation():
         page = context.new_page()
         df = pd.read_excel(
             "Automation_Sheet.xlsx",
+            sheet_name=0,
             converters={
                 'A.code': normalize_identifier,
                 'CP/BP/REG': normalize_identifier,
@@ -117,7 +118,7 @@ def run_automation():
                 outlet_input.wait_for()
                 outlet_input.click()
                 page.get_by_role("searchbox", name="Search").nth(2).fill(first_row['PARTY CODE'])
-                party_code_option = page.get_by_role("option", name=first_row['PARTY CODE'])
+                party_code_option = page.get_by_role("option", name=first_row['PARTY CODE']).first
 
                 if party_code_option.is_visible():
                     party_code_option.click()
