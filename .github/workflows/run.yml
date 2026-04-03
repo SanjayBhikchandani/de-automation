@@ -1,0 +1,53 @@
+name: DMS Automation
+
+on:
+  # Manual trigger Only
+  workflow_dispatch:
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Install Playwright browsers
+        run: |
+          playwright install chromium
+      
+      - name: Run automation script
+        env:
+          DMS_USERNAME: ${{ secrets.DMS_USERNAME }}
+          DMS_PASSWORD: ${{ secrets.DMS_PASSWORD }}
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}
+          SALES_URL: ${{ secrets.SALES_URL }}
+        run: |
+          python script.py
+      
+      - name: Upload processed results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: processed-records
+          path: PROCESSED_RECORDS_*.xlsx
+          retention-days: 30
+      
+      - name: Upload error logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: error-logs
+          path: error_trace.zip
+          retention-days: 7
